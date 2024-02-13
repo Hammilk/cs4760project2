@@ -6,6 +6,17 @@
 #include<sys/ipc.h>
 #include<sys/shm.h>
 
+#define SHMKEY 2031535 
+#define BUFF_SZ sizeof (int)
+
+
+
+
+
+
+
+
+
 struct PCB{
     int occupied; //Either true or false
     pid_t pid; //process id of child
@@ -28,11 +39,33 @@ void print_usage(const char * app){
     fprintf(stderr, "   intervalInMsToLaunchChildren species how often you should launch a child.\n");
 }
 
+void printProcessTable(int PID, int SysClockS, int SysClockNano, struct PCB processTable[20]){
+    printf("OSS PID %d SysClockS: %d SysClockNano: %d\n", PID, SysClockS, SysClockNano);
+    printf("Process Table:\n");
+    printf("Entry     Occupied  PID       StartS    Startn\n"); 
+    for(int i = 0; i<20; i++){
+        printf("%d         %d         %d         %d         %d\n", i, i, PID, SysClockS, SysClockNano);
+    } 
+}
+
+
 
 
 
 int main(int argc, char* argv[]){
     
+    //Set up shared memory
+    int shmid = shmget(SHMKEY, BUFF_SZ, 0777 | IPC_CREAT);
+    if(shmid == 1){
+        fprintf(stderr, "error in shmget\n");
+        exit(1);
+    }
+
+    char * paddr = (char *)(shmat(shmid, 0, 0));
+    int *sh_ptr = (int *)(paddr);
+
+    //Set up structs
+
     struct PCB processTable[20];
     options_t options;
     options.proc = 1;
@@ -67,7 +100,28 @@ int main(int argc, char* argv[]){
         }
     }
 
+    while(stillChildrenToLaunch){
+        incrementClock();
 
+        //Every half a second, output process table
+        
+        checkIfChildHasTerminated();
+
+        if(childHasTerminated){
+            updatePCBOfTerminatedChild;
+        }
+
+        //possibly launch new child
+        
+    }
+
+
+
+
+
+    
+
+    return 0;
     
 
 
