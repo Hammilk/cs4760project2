@@ -8,11 +8,7 @@
 
 #define SHMKEY 2031535 
 #define BUFF_SZ sizeof (int)
-
-
-
-
-
+#define MAXDIGITS 3
 
 
 
@@ -48,10 +44,6 @@ void printProcessTable(int PID, int SysClockS, int SysClockNano, struct PCB proc
     } 
 }
 
-
-
-
-
 int main(int argc, char* argv[]){
     
     //Set up shared memory
@@ -67,13 +59,14 @@ int main(int argc, char* argv[]){
     //Set up structs
 
     struct PCB processTable[20];
-    options_t options;
-    options.proc = 1;
-    options.simul = 1;
-    options.timelimit = 1;
-    options.interval = 1;
 
-    const char optstr[] = "hn:s:t:i";
+    options_t options;
+    options.proc = 1; //n
+    options.simul = 1; //s
+    options.timelimit = 1; //t
+    options.interval = 1; //i
+
+    const char optstr[] = "hn:s:t:i:";
 
     char opt;
     while((opt = getopt(argc, argv, optstr))!= -1){
@@ -99,7 +92,39 @@ int main(int argc, char* argv[]){
                 return(EXIT_FAILURE);
         }
     }
+    
+    int tempLoop = 0;
+    int child_process;
+    int tempSeconds = 5;
+    int tempNano = 3;
+    int status;
+    
+    *sh_ptr = 44696494;
 
+    while(tempLoop < 1){
+        tempLoop++;
+        if(child_process = fork() == 0){
+            printf("Childtest\n");
+
+            char secondsString[MAXDIGITS];
+            char nanoString[MAXDIGITS];
+            sprintf(secondsString, "%d", 2);
+            sprintf(nanoString, "%d", 2);
+
+
+            char * args[] = {"./worker", secondsString, nanoString, 0};
+            
+            execlp(args[0], args[0], args[1], args[2], NULL);
+            printf("bkjdslfj");            
+        }
+        else{
+            waitpid(-1, &status, 0);
+            printf("Test\n");
+        }
+    }
+
+    
+    /*
     while(stillChildrenToLaunch){
         incrementClock();
 
@@ -114,11 +139,7 @@ int main(int argc, char* argv[]){
         //possibly launch new child
         
     }
-
-
-
-
-
+    */
     
 
     return 0;

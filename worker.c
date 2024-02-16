@@ -5,7 +5,8 @@
 #include<unistd.h>
 #include<stdlib.h>
 
-int main(int seconds, int nano){
+int main(int argc, char** argv){
+    
 
     //Set up shared memory pointer
     const int sh_key = 2031535;
@@ -19,6 +20,13 @@ int main(int seconds, int nano){
         fprintf(stderr, "Shared memory attach failed\n");
         exit(1);
     }
+
+    int seconds = atoi(argv[1]);
+    int nano = atoi(argv[2]);
+    
+
+
+
 
     //Work
     
@@ -47,6 +55,6 @@ int main(int seconds, int nano){
 
     //Unattach shared memory pointer
     shmdt(shm_ptr);
-   
-    return 0;
+   */
+    exit(0);
 }
