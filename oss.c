@@ -27,6 +27,13 @@ typedef struct{
     int interval;
 } options_t;
 
+typedef struct{
+    int seconds;
+    int nano;
+} clock;
+
+
+
 void print_usage(const char * app){
     fprintf(stderr, "usage: %s [-h] [-n proc] [-s simul] [-t timeLimitForChildren] [-i intervalInMsToLaunchChildren]\n", app);
     fprintf(stderr, "   proc is the total amount of children.\n");
@@ -44,17 +51,28 @@ void printProcessTable(int PID, int SysClockS, int SysClockNano, struct PCB proc
     } 
 }
 
+void incrementClock(clock c){
+    c.nano += 500;
+    if(c.nano >= (pow(10, 9))){
+        c.nano -= (pow(10, 9));
+        c.seconds++;
+    }
+}
+
+
+
+
 int main(int argc, char* argv[]){
     
     //Set up shared memory
     int shmid = shmget(SHMKEY, BUFF_SZ, 0777 | IPC_CREAT);
-    if(shmid == 1){
+    if(shmid == -1){
         fprintf(stderr, "error in shmget\n");
         exit(1);
     }
 
     char * paddr = (char *)(shmat(shmid, 0, 0));
-    int *sh_ptr = (int *)(paddr);
+    clock *sh_ptr = (int *)(paddr);
 
     //Set up structs
 
@@ -65,6 +83,8 @@ int main(int argc, char* argv[]){
     options.simul = 1; //s
     options.timelimit = 1; //t
     options.interval = 1; //i
+
+    //Set up user inputs
 
     const char optstr[] = "hn:s:t:i:";
 
@@ -93,16 +113,23 @@ int main(int argc, char* argv[]){
         }
     }
     
+    //Set up variables
+
     int tempLoop = 0;
     int child_process;
     int tempSeconds = 5;
     int tempNano = 3;
     int status;
     
+    //Work
+
     *sh_ptr = 44696494;
 
     while(tempLoop < 1){
-        tempLoop++;
+        tempLoop++; //TEMPORARY FOR TESTING
+        
+        
+
         if(child_process = fork() == 0){
             printf("Childtest\n");
 
@@ -118,8 +145,10 @@ int main(int argc, char* argv[]){
             printf("bkjdslfj");            
         }
         else{
+
             waitpid(-1, &status, 0);
             printf("Test\n");
+            tempLoop++;
         }
     }
 

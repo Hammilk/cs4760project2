@@ -5,12 +5,15 @@
 #include<unistd.h>
 #include<stdlib.h>
 
+
+#define SHMKEY 2031535
+#define BUFF_SZ sizeof(int)
+
 int main(int argc, char** argv){
     
 
     //Set up shared memory pointer
-    const int sh_key = 2031535;
-    int shm_id = shmget(sh_key, sizeof(int) * 10, IPC_CREAT | 0666);
+    int shm_id = shmget(SHMKEY, BUFF_SZ, IPC_CREAT | 0777);
     if(shm_id <= 0){
         fprintf(stderr, "Shared memory get failed\n");
         exit(1);
@@ -43,10 +46,12 @@ int main(int argc, char** argv){
             , pid, ppid, SysClockS, SysClockNano, seconds, nano);
 
     int time = (seconds * (pow(10, 9))) + nano;
+    /*
     while(time>(*shm_ptr)){
         printf("WORKER PID: %d PPID: %d SysClockS: %d SysClockNano: %d TermTimeS: %d TermTimeNano: %d\n--%d seconds have passed since starting\n"
             , pid, ppid, SysClockS, SysClockNano, seconds, nano, timeElapsed++);
     }
+    */
 
     printf("WORKER PID: %d PPID: %d SysClockS: %d SysClockNano: %d TermTimeS: %d TermTimeNano: %d\n--Terminating\n"
             , pid, ppid, SysClockS, SysClockNano, seconds, nano);
@@ -55,6 +60,6 @@ int main(int argc, char** argv){
 
     //Unattach shared memory pointer
     shmdt(shm_ptr);
-   */
+  
     exit(0);
 }
