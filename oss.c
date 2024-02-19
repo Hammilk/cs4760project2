@@ -50,7 +50,7 @@ void printProcessTable(int PID, int SysClockS, int SysClockNano, struct PCB proc
 }
 
 void incrementClock(int *seconds, int *nano){
-    (*nano) += 10000;
+    (*nano) += 750000;
     if((*nano) >= (pow(10, 9))){
          (*nano) -= (pow(10, 9));
          (*seconds)++;
@@ -70,7 +70,7 @@ int main(int argc, char* argv[]){
     }
     int *sharedSeconds = shmat(shmid, 0, 0);
     
-    //Attach shared memory to location pointed to by *seconds
+    //Attach shared memory to nano
     shmid = shmget(SHMKEY2, BUFF_SZ, 0777 | IPC_CREAT);
     if(shmid == -1){
         fprintf(stderr, "error in shmget 2.0\n");
@@ -78,23 +78,12 @@ int main(int argc, char* argv[]){
     }
     int *sharedNano=shmat(shmid, 0, 0);
 
-    
-
-
-
-    
-    
-    /*
-    char * paddr = (char *)(shmat(shmid, 0, 0));
-    int *sh_ptr = (int *)(paddr);
-    */
-
     //Set up structs
 
     struct PCB processTable[20];
 
     options_t options;
-    options.proc = 1; //n
+    options.proc = 3; //n
     options.simul = 1; //s
     options.timelimit = 1; //t
     options.interval = 1; //i
@@ -138,38 +127,56 @@ int main(int argc, char* argv[]){
     *sharedNano = nano;
     
 
+
     //Work
 
-    int testFlag = 0; 
+    int childrenLaunched = 0; 
     int childFinished = 0;
+    
+
+    //Implement simultaneous children then time interval children then total amount of children:
+    //Total children: options.proc
+    //simul children: options.simul
+    //interval of children: options.interval
 
 
     while(childFinished == 0){
         incrementClock(sharedSeconds, sharedNano);
+
+        if(childrenLaunched < 1 && (child_process = fork() == 0)){
             
 
-        if(testFlag < 1 && (child_process = fork() == 0)){
-
-            printf("Childtest\n");
-            
+            //Convert integers to strings
             char terminatedTime[MAXDIGITS];
             sprintf(terminatedTime, "%d", options.timelimit);
-
-
             char * args[] = {"./worker", terminatedTime};
             
+            //Run Executable
             execlp(args[0], args[0], args[1],  NULL);
-            printf("bkjdslfj");            
+            printf("Exec failed\n");
+            exit(1);            
         }
         else{
-            testFlag = 1;
-            //printf("Parent Seconds: %d Parent Nano: %d\n", *(clock -> secondsPtr), *(clock -> nanoPtr));
-            childFinished = waitpid(-1, &status, WNOHANG);
-            //printf("Child Finished Status: %d\n", childFinished);
-        }
-    }
-    printf("Out of loop\n");
+            //Trying stuff
+            printf("What does fork return: %d\n", child_process);
+            
 
+
+            childrenLaunched = 1;       
+            childFinished = waitpid(-1, &status, WNOHANG);
+            /*
+            if(childrenLaunched < options.proc){
+                childFinished = 0;
+            }
+            */
+
+        }
+
+        
+
+    }
+
+    
     
     /*
     while(stillChildrenToLaunch){
