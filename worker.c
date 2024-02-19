@@ -56,11 +56,12 @@ int main(int argc, char** argv){
 
 
     while(!(timeLimitSeconds==(*sharedSeconds)&&timeLimitNano<(*sharedNano)) || timeLimitSeconds<(*sharedSeconds)){
-    
+        /*    
         timeElapsed = *sharedSeconds - sysClockS;
 
         printf("WORKER PID: %d PPID: %d SysClockS: %d SysClockNano: %d TermTimeS: %d TermTimeNano: %d\n--%d seconds have passed since starting\n"
             , pid, ppid, *sharedSeconds, *sharedNano, timeLimitSeconds, timeLimitNano, timeElapsed);
+            */
     }
     
     
