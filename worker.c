@@ -6,28 +6,31 @@
 #include<stdlib.h>
 
 
-#define SHMKEY 2031535
+#define SHMKEY1 2031535
+#define SHMKEY2 2031536
+#define SHMKEY3 2041537
 #define BUFF_SZ sizeof(int)
+
 
 int main(int argc, char** argv){
     
-
-    //Set up shared memory pointer
-    int shm_id = shmget(SHMKEY, BUFF_SZ, IPC_CREAT | 0777);
+    
+    //Set up shared memory pointer for struct
+    int shm_id = shmget(SHMKEY1, BUFF_SZ, IPC_CREAT | 0777);
     if(shm_id <= 0){
         fprintf(stderr, "Shared memory get failed\n");
         exit(1);
     }
-    int *shm_ptr=shmat(shm_id, 0, 0);
-    if(shm_ptr <= 0){
-        fprintf(stderr, "Shared memory attach failed\n");
+    int* sharedSeconds = shmat(shm_id, 0, 0);
+
+    //Set up shared memory pointer
+    shm_id = shmget(SHMKEY2, BUFF_SZ, IPC_CREAT | 0777);
+    if(shm_id <= 0){
+        fprintf(stderr, "Shared memory get failed\n");
         exit(1);
     }
-
-    int seconds = atoi(argv[1]);
-    int nano = atoi(argv[2]);
+    int* sharedNano = shmat(shm_id, 0, 0);
     
-
 
 
 
@@ -36,30 +39,41 @@ int main(int argc, char** argv){
     int pid = getpid();
     int ppid = getppid();
 
-    int SysClockS = (*shm_ptr)/(int)(pow(10,9));
-    int SysClockNano = (*shm_ptr)%(int)(pow(10,9));
-    int timeElapsed = 0;
-    
-
+    //Parse out current SysClock and SysNano time
+    int sysClockS = *sharedSeconds; //Starting seconds
+    int sysClockNano = *sharedNano; //Starting nanoseconds
+    int timeLimitSeconds = atoi(argv[1]) + sysClockS; //upper bound, passed from calling parent
+    int timeLimitNano = sysClockNano; 
+    int seconds;
+    int nano;   
+    int timeElapsed;
 
     printf("WORKER PID: %d PPID: %d SysClockS: %d SysClockNano: %d TermTimeS: %d TermTimeNano: %d\n--Just Starting\n"
-            , pid, ppid, SysClockS, SysClockNano, seconds, nano);
+            , pid, ppid, *sharedSeconds, *sharedNano, timeLimitSeconds, timeLimitNano);
 
-    int time = (seconds * (pow(10, 9))) + nano;
-    /*
-    while(time>(*shm_ptr)){
+   
+
+
+
+    while(!(timeLimitSeconds<(*sharedSeconds)&&timeLimitNano<*(sharedNano))){
+        printf("Time Limit: %d\n Clock Seconds: %d\n Clock Nano: %d\n", timeLimitSeconds, *sharedSeconds, *sharedNano);
+        timeElapsed = *sharedSeconds - sysClockS;
+
         printf("WORKER PID: %d PPID: %d SysClockS: %d SysClockNano: %d TermTimeS: %d TermTimeNano: %d\n--%d seconds have passed since starting\n"
-            , pid, ppid, SysClockS, SysClockNano, seconds, nano, timeElapsed++);
+            , pid, ppid, *sharedSeconds, *sharedNano, timeLimitSeconds, timeLimitNano, timeElapsed);
     }
-    */
-
+    
+    
+   
     printf("WORKER PID: %d PPID: %d SysClockS: %d SysClockNano: %d TermTimeS: %d TermTimeNano: %d\n--Terminating\n"
-            , pid, ppid, SysClockS, SysClockNano, seconds, nano);
+            , pid, ppid, *sharedSeconds, *sharedNano, timeLimitSeconds, timeLimitNano);
+
 
 
 
     //Unattach shared memory pointer
-    shmdt(shm_ptr);
-  
-    exit(0);
+    shmdt(sharedSeconds);
+    shmdt(sharedNano);
+    printf("Child exit\n");  
+    return EXIT_SUCCESS;
 }

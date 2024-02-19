@@ -5,8 +5,11 @@
 #include<sys/wait.h>
 #include<sys/ipc.h>
 #include<sys/shm.h>
+#include<math.h>
 
-#define SHMKEY 2031535 
+#define SHMKEY1 2031535
+#define SHMKEY2 2031536
+#define SHMKEY3 2031537
 #define BUFF_SZ sizeof (int)
 #define MAXDIGITS 3
 
@@ -20,18 +23,13 @@ struct PCB{
     int startNano; //time when it was forked
 };
 
+
 typedef struct{
     int proc;
     int simul;
     int timelimit;
     int interval;
 } options_t;
-
-typedef struct{
-    int seconds;
-    int nano;
-} clock;
-
 
 
 void print_usage(const char * app){
@@ -51,11 +49,11 @@ void printProcessTable(int PID, int SysClockS, int SysClockNano, struct PCB proc
     } 
 }
 
-void incrementClock(clock c){
-    c.nano += 500;
-    if(c.nano >= (pow(10, 9))){
-        c.nano -= (pow(10, 9));
-        c.seconds++;
+void incrementClock(int *seconds, int *nano){
+    (*nano) += 10000;
+    if((*nano) >= (pow(10, 9))){
+         (*nano) -= (pow(10, 9));
+         (*seconds)++;
     }
 }
 
@@ -65,14 +63,31 @@ void incrementClock(clock c){
 int main(int argc, char* argv[]){
     
     //Set up shared memory
-    int shmid = shmget(SHMKEY, BUFF_SZ, 0777 | IPC_CREAT);
+    int shmid = shmget(SHMKEY1, BUFF_SZ, 0777 | IPC_CREAT);
     if(shmid == -1){
-        fprintf(stderr, "error in shmget\n");
+        fprintf(stderr, "error in shmget 1.0\n");
         exit(1);
     }
+    int *sharedSeconds = shmat(shmid, 0, 0);
+    
+    //Attach shared memory to location pointed to by *seconds
+    shmid = shmget(SHMKEY2, BUFF_SZ, 0777 | IPC_CREAT);
+    if(shmid == -1){
+        fprintf(stderr, "error in shmget 2.0\n");
+        exit(1);
+    }
+    int *sharedNano=shmat(shmid, 0, 0);
 
+    
+
+
+
+    
+    
+    /*
     char * paddr = (char *)(shmat(shmid, 0, 0));
-    clock *sh_ptr = (int *)(paddr);
+    int *sh_ptr = (int *)(paddr);
+    */
 
     //Set up structs
 
@@ -113,44 +128,47 @@ int main(int argc, char* argv[]){
         }
     }
     
-    //Set up variables
-
-    int tempLoop = 0;
+    //Set up variables;
     int child_process;
-    int tempSeconds = 5;
-    int tempNano = 3;
+  
     int status;
+    int seconds = 0;
+    int nano = 0;
+    *sharedSeconds = seconds;
+    *sharedNano = nano;
     
+
     //Work
 
-    *sh_ptr = 44696494;
-
-    while(tempLoop < 1){
-        tempLoop++; //TEMPORARY FOR TESTING
-        
-        
-
-        if(child_process = fork() == 0){
-            printf("Childtest\n");
-
-            char secondsString[MAXDIGITS];
-            char nanoString[MAXDIGITS];
-            sprintf(secondsString, "%d", 2);
-            sprintf(nanoString, "%d", 2);
+    int testFlag = 0; 
+    int childFinished = 0;
 
 
-            char * args[] = {"./worker", secondsString, nanoString, 0};
+    while(childFinished == 0){
+        incrementClock(sharedSeconds, sharedNano);
             
-            execlp(args[0], args[0], args[1], args[2], NULL);
+
+        if(testFlag < 1 && (child_process = fork() == 0)){
+
+            printf("Childtest\n");
+            
+            char terminatedTime[MAXDIGITS];
+            sprintf(terminatedTime, "%d", options.timelimit);
+
+
+            char * args[] = {"./worker", terminatedTime};
+            
+            execlp(args[0], args[0], args[1],  NULL);
             printf("bkjdslfj");            
         }
         else{
-
-            waitpid(-1, &status, 0);
-            printf("Test\n");
-            tempLoop++;
+            testFlag = 1;
+            //printf("Parent Seconds: %d Parent Nano: %d\n", *(clock -> secondsPtr), *(clock -> nanoPtr));
+            childFinished = waitpid(-1, &status, WNOHANG);
+            //printf("Child Finished Status: %d\n", childFinished);
         }
     }
+    printf("Out of loop\n");
 
     
     /*
@@ -170,7 +188,9 @@ int main(int argc, char* argv[]){
     }
     */
     
-
+    shmdt(sharedSeconds);
+    shmdt(sharedNano);
+    shmctl(shmid, IPC_RMID, NULL);
     return 0;
     
 
