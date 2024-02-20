@@ -13,6 +13,38 @@
 #define BUFF_SZ sizeof (int)
 #define MAXDIGITS 3
 
+int interval = 0;
+
+static void myhandler(int s){
+    
+    interval = 1;
+    
+}
+
+static void myhandlerExit(int s){
+    printf("Got signal, terminated\n");
+    exit(1);
+}
+
+static int setupinterrupt(void){
+    struct sigaction act;
+    act.sa_handler = myhandler;
+    act.sa_flags = 0;
+    return(sigemptyset(&act.sa_mask) || sigaction(SIGINT, &act, NULL) || sigaction(SIGPROF, &act, NULL));
+}
+
+static int setupitimer(int s){
+    struct itimerval value;
+    value.it_interval.tv_sec = s;
+    value.it_interval.tv_usec = 0;
+    value.it_value = value.it_interval;
+    return (setitimer(ITIMER_PROF, &value, NULL));
+}
+
+static int setup
+
+
+
 //test
 
 
@@ -45,7 +77,10 @@ void printProcessTable(int PID, int SysClockS, int SysClockNano, struct PCB proc
     printf("Process Table:\n");
     printf("Entry     Occupied  PID       StartS    Startn\n"); 
     for(int i = 0; i<20; i++){
-        printf("%d         %d         %d         %d         %d\n", i, i, PID, SysClockS, SysClockNano);
+        //if((processTable[i].occupied) == 1){
+            printf("%d         %d         %d         %d         %d\n", i, processTable[i].occupied, processTable[i].pid, processTable[i].startSeconds, processTable[i].startNano);
+        //}
+        
     } 
 }
 
@@ -58,20 +93,10 @@ void incrementClock(int *seconds, int *nano){
 }
 
 
-int checkTermination(int status){
-    return waitpid(-1, &status, WNOHANG);
-}
-
-
-
-
-
-
-
-
-
 int main(int argc, char* argv[]){
+ 
     
+
     //Set up shared memory
     int shmid = shmget(SHMKEY1, BUFF_SZ, 0777 | IPC_CREAT);
     if(shmid == -1){
@@ -94,8 +119,8 @@ int main(int argc, char* argv[]){
 
 
     options_t options;
-    options.proc = 3; //n
-    options.simul = 1; //s
+    options.proc = 2; //n
+    options.simul = 3; //s
     options.timelimit = 1; //t
     options.interval = 1; //i
 
@@ -127,11 +152,18 @@ int main(int argc, char* argv[]){
                 return(EXIT_FAILURE);
         }
     }
-    
+    if(setupinterrupt() == -1){
+        perror("Failed to set up handler for SIGPROF");
+        return 1;
+    }
+    if(setupitimer(options.interval) == -1){
+        perror("Failed to set up the ITIMER_PROF interval timer");
+        return 1;
+    }
     //Set up variables;
-    pid_t child_process;
-  
-    int status;
+    pid_t pid;
+    
+    int status = 0;
     int seconds = 0;
     int nano = 0;
     *sharedSeconds = seconds;
@@ -144,20 +176,132 @@ int main(int argc, char* argv[]){
     int childrenLaunched = 0; 
     int childFinished = 0;
     int simulCount = 0;
+    int launchFlag = 0;
+    
 
         //Implement simultaneous children then time interval children then total amount of children:
     //Total children: options.proc
     //simul children: options.simul
     //interval of children: options.interval
-    
-    
+   
+    int infLoop = 1;
 
-    while(childFinished == 0){
+    while(infLoop == 1){
+        
+        incrementClock(sharedSeconds, sharedNano);
+        //Deallocate Array
+        terminatedChild = waitpid(-1, &status, WNOHANG);
+        if(terminatedChild > 0){
+            terminatedChild = 0;
+            simulCount--;
+            int index = 0;
+            int arrayDeleted = 0;
+            while(!arrayDeleted){
+                if(processTable[index].pid == terminatedChild){
+                    arrayDeleted = 1;
+                    processTable[index].occupied = 0;
+                    processTable[index].pid = 0;
+                    processTable[index].startSeconds = 0;
+                    processTable[index].startNano = 0;
+                }
+            }
+        }
+
+        //Print Table
+        printProcessTable(getpid(), *sharedSeconds, *sharedNano, processTable);
+
+        //Launch Children
+        if(launchFlag == 0 && simulCount < options.simul){
+            launchFlag = 1;
+            interval = 0;
+            simulCount++;
+            childrenLaunched++;
+            printf("Launch\n");
+            pid = fork();
+        }
+
+        //Launch Executables
+        if(pid == 0){
+            char terminatedTime[MAXDIGITS];
+            sprintf(terminatedTime, "%d", options.timelimit);
+            char * args[] = {"./worker", terminatedTime};
+
+            //Run Executable
+            execlp(args[0], args[0], args[1],  NULL);
+            printf("Exec failed\n");
+            exit(1);
+        }
+
+        else if (pid > 0 && launchFlag>0 && childrenLaunched < options.proc){
+            launchFlag = 0;
+           
+            
+            printf("Insert array\n");
+            //Insert child into PCB
+            int index = 0;
+            int arrayInserted = 0;
+            while(!arrayInserted){
+                if(processTable[index].occupied == 1){
+                    index++;
+                }
+                else if(processTable[index].occupied == 0){
+                    arrayInserted = 1;
+                    processTable[index].occupied = 1;
+                    processTable[index].pid = pid;
+                    processTable[index].startSeconds = *sharedSeconds;
+                    processTable[index].startNano = *sharedNano;
+                }
+                else{
+                    printf("ERROR PCB Fail\n");
+                    exit(1);
+                }
+            }
+            
+        }
+        else if (pid > 0){ 
+            childFinished = waitpid(-1, NULL, WNOHANG);
+            if(childFinished != 0){
+                printf("Null flag: %d\n", childFinished);
+                break;
+            }
+
+        }
+        
+        /*
+
+        if(childrenLaunched < options.proc && (child_process = fork() == 0)){
+            char terminatedTime[MAXDIGITS];
+            sprintf(terminatedTime, "%d", options.timelimit);
+            char * args[] = {"./worker", terminatedTime};
+            //Run Executable
+            execlp(args[0], args[0], args[1],  NULL);
+            printf("Exec failed\n");
+            exit(1);            
+        }
+        else{
+            
+            if(child_process>0){
+                child_process = 0;
+                childrenLaunched++;
+            }
+            
+            childrenLaunched = 1;
+            
+            
+            childFinished = waitpid(-1, NULL, WNOHANG);
+            */
+        
+        //Convert integers to strin
+    }
+
+    
+    /*
+    while(childFinished == 0 && childrenLaunched < options.proc){
         //Increment seconds and nano into shared memory
         incrementClock(sharedSeconds, sharedNano);
 
         //check to see if child has terminated
-        terminatedChild = checkTermination(status);
+        //terminatedChild = checkTermination(status);
 
         //If child has been terminated, delete child from struct
         if(terminatedChild>0){
@@ -170,7 +314,7 @@ int main(int argc, char* argv[]){
                     processTable[index].occupied = 0;
                     processTable[index].pid = 0;
                     processTable[index].startSeconds = 0;
-                    processTable[index].startNano;
+                    processTable[index].startNano = 0;
                 }
                 else{
                     index++;
@@ -211,19 +355,14 @@ int main(int argc, char* argv[]){
                     processTable[index].startNano = *sharedNano;
                 }
                 else{
-                    printf("ERROR\n");
+                    printf("ERROR PCB Fail\n");
                     exit(1);
                 }
             }
-
-
-
-
-        
-
         }
         else{
-            childFinished = waitpid(-1, &status, WNOHANG);
+            printf("In Else Clause\n");
+            childFinished = waitpid(-1, NULL, WNOHANG);
         }
     }
     
@@ -233,7 +372,7 @@ int main(int argc, char* argv[]){
 
    
     
-    /*
+
     while(stillChildrenToLaunch){
         incrementClock();
 
@@ -248,8 +387,9 @@ int main(int argc, char* argv[]){
         //possibly launch new child
         
     }
+
+
     */
-    
     shmdt(sharedSeconds);
     shmdt(sharedNano);
     shmctl(shmid, IPC_RMID, NULL);
