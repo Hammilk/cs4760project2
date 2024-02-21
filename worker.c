@@ -47,21 +47,25 @@ int main(int argc, char** argv){
     int seconds;
     int nano;   
     int timeElapsed;
+    int timer = 0;
 
     printf("WORKER PID: %d PPID: %d SysClockS: %d SysClockNano: %d TermTimeS: %d TermTimeNano: %d\n--Just Starting\n"
             , pid, ppid, *sharedSeconds, *sharedNano, timeLimitSeconds, timeLimitNano);
 
-   
-
-
-
-    while(timeLimitSeconds<(*sharedSeconds)){
+     
+    while(timeLimitSeconds > (*sharedSeconds) || ((timeLimitSeconds == (*sharedSeconds)) && (timeLimitNano > (*sharedNano)))){
+        
 
         timeElapsed = *sharedSeconds - sysClockS;
-
         
-        printf("WORKER PID: %d PPID: %d SysClockS: %d SysClockNano: %d TermTimeS: %d TermTimeNano: %d\n--%d seconds have passed since starting\n"
+        
+        
+        if((*sharedSeconds) - timer == 1){
+            timer = *sharedSeconds;
+            printf("WORKER PID: %d PPID: %d SysClockS: %d SysClockNano: %d TermTimeS: %d TermTimeNano: %d\n--%d seconds have passed since starting\n"
             , pid, ppid, *sharedSeconds, *sharedNano, timeLimitSeconds, timeLimitNano, timeElapsed);
+        }
+        
 
             
 
@@ -78,6 +82,6 @@ int main(int argc, char** argv){
     //Unattach shared memory pointer
     shmdt(sharedSeconds);
     shmdt(sharedNano);
-    printf("Child exit\n");  
+      
     return EXIT_SUCCESS;
 }
