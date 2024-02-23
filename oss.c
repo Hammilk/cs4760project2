@@ -73,7 +73,7 @@ void printProcessTable(int PID, int SysClockS, int SysClockNano, struct PCB proc
 }
 
 void incrementClock(int *seconds, int *nano){
-    (*nano) += 1000;
+    (*nano) += 100;
     if((*nano) >= (pow(10, 9))){
          (*nano) -= (pow(10, 9));
          (*seconds)++;
@@ -183,22 +183,26 @@ int main(int argc, char* argv[]){
        
         incrementClock(sharedSeconds, sharedNano);
         //Deallocate Array
+        
+        /*
         terminatedChild = waitpid(-1, &status, WNOHANG);
         if(terminatedChild > 0){
-            terminatedChild = 0;
             simulCount--;
             int index = 0;
             int arrayDeleted = 0;
             while(!arrayDeleted){
+                printf("test\n");
                 if(processTable[index].pid == terminatedChild){
                     arrayDeleted = 1;
                     processTable[index].occupied = 0;
                     processTable[index].pid = 0;
                     processTable[index].startSeconds = 0;
                     processTable[index].startNano = 0;
+                    index++;
                 }
             }
         }
+        */
 
         //Print Table
         
@@ -238,6 +242,7 @@ int main(int argc, char* argv[]){
             int index = 0;
             int arrayInserted = 0;
             while(!arrayInserted){
+                
                 if(processTable[index].occupied == 1){
                     index++;
                 }
@@ -258,10 +263,19 @@ int main(int argc, char* argv[]){
         else if (pid > 0){ 
             childFinished = waitpid(-1, NULL, WNOHANG);
             if(childFinished > 0){
+                simulCount--;
+               
+                for(int i = 0; i < 20; i++){
+                    if(processTable[i].pid == childFinished){
+                        processTable[i].occupied = 0;
+                        processTable[i].pid = 0;
+                        processTable[i].startSeconds = 0;
+                        processTable[i].startNano = 0;
+                    }
+                }
                 childFinished = 0;
                 childrenFinishedCount++;
             }
-
         }
     }
     printf("Out of loop\n");
