@@ -117,7 +117,7 @@ int main(int argc, char* argv[]){
     options.timelimit = 5; //t
     options.interval = 1; //i
 
-    //Set up user inputs
+    //Set up user input
 
     const char optstr[] = "hn:s:t:i:";
 
