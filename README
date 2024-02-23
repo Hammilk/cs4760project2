@@ -1,0 +1,20 @@
+CS 4760
+AUTHOR: DAVID PHAM
+PROJECT: PROJECT 2
+
+The purpose of this project is to launch child processes synchronized to an system-simulated clock. Child process meta-data is then stored
+into a process table which is printed every second.
+
+
+The following are the user input parameters for this project:
+-h "Help" Brings up user parameters for project
+-n "proc" Total amount of children to be launched
+-s "simul" Simultaneous amount of children that can be launched
+-t "timeLimitforChildren" The period of time the children will exist for
+-i "intervalInMsToLaunchChildren" The time interval of which the parent will launch the children
+
+To compile the project. Enter "make" into the command line and run "./oss".
+
+To clean files, enter "make clean" into the command line.
+
+

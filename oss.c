@@ -38,11 +38,6 @@ static int setupinterrupt(void);
 static int setupitimer(void);
 
 
-//test
-
-
-
-
 
 typedef struct{
     int proc;
@@ -73,7 +68,7 @@ void printProcessTable(int PID, int SysClockS, int SysClockNano, struct PCB proc
 }
 
 void incrementClock(int *seconds, int *nano){
-    (*nano) += 100;
+    (*nano) += 1000;
     if((*nano) >= (pow(10, 9))){
          (*nano) -= (pow(10, 9));
          (*seconds)++;
@@ -115,7 +110,7 @@ int main(int argc, char* argv[]){
     options.proc = 2; //n
     options.simul = 3; //s
     options.timelimit = 5; //t
-    options.interval = 1; //i
+    options.interval = 1 * pow(10, 6); //i
 
     //Set up user input
 
@@ -137,7 +132,8 @@ int main(int argc, char* argv[]){
                 options.timelimit = atoi(optarg);
                 break;
             case 'i':
-                options.interval = atoi(optarg);
+                //options.interval = atoi(optarg);
+                options.interval = (atoi(optarg))*pow(10, 6);
                 break;
             default:
                 printf("Invalid options %c\n", optopt);
@@ -165,7 +161,7 @@ int main(int argc, char* argv[]){
     }
 
     //Work
-    int terminatedChild = 0;
+    
     int childrenLaunched = 0; 
     int childFinished = 0;
     int simulCount = 0;
@@ -180,29 +176,10 @@ int main(int argc, char* argv[]){
    
 
     while(childrenFinishedCount < options.proc){
-       
-        incrementClock(sharedSeconds, sharedNano);
-        //Deallocate Array
         
-        /*
-        terminatedChild = waitpid(-1, &status, WNOHANG);
-        if(terminatedChild > 0){
-            simulCount--;
-            int index = 0;
-            int arrayDeleted = 0;
-            while(!arrayDeleted){
-                printf("test\n");
-                if(processTable[index].pid == terminatedChild){
-                    arrayDeleted = 1;
-                    processTable[index].occupied = 0;
-                    processTable[index].pid = 0;
-                    processTable[index].startSeconds = 0;
-                    processTable[index].startNano = 0;
-                    index++;
-                }
-            }
-        }
-        */
+        incrementClock(sharedSeconds, sharedNano);
+        
+        
 
         //Print Table
         
@@ -213,7 +190,7 @@ int main(int argc, char* argv[]){
        
 
         //Launch Children
-        if(launchFlag == 0 && childrenLaunched < options.proc && simulCount < options.simul && (*sharedSeconds)%options.interval == 0){
+        if(launchFlag == 0 && childrenLaunched < options.proc && simulCount < options.simul && (*sharedNano)%options.interval == 0){
             launchFlag = 1;
             interval = 0;
             simulCount++;
@@ -222,7 +199,7 @@ int main(int argc, char* argv[]){
         }
 
         //Launch Executables
-        if(pid == 0){
+        if(pid == 0 && launchFlag == 1){
             char terminatedTime[MAXDIGITS];
             sprintf(terminatedTime, "%d", options.timelimit);
             char * args[] = {"./worker", terminatedTime};
@@ -242,7 +219,7 @@ int main(int argc, char* argv[]){
             int index = 0;
             int arrayInserted = 0;
             while(!arrayInserted){
-                
+                  
                 if(processTable[index].occupied == 1){
                     index++;
                 }
@@ -261,6 +238,7 @@ int main(int argc, char* argv[]){
             
         }
         else if (pid > 0){ 
+            
             childFinished = waitpid(-1, NULL, WNOHANG);
             if(childFinished > 0){
                 simulCount--;
